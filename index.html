@@ -341,7 +341,7 @@
             const noiseElem = document.getElementById('val-noise');
             noiseElem.innerText = noise;
             
-            // Visual Threshold Check for Noise > 25
+            // Visual Threshold Check for Noise > 40
             if(noise > 40) {
                 noiseElem.className = "text-2xl font-bold text-red-500 animate-pulse";
             } else {
@@ -350,12 +350,12 @@
             
             const alertBox = document.getElementById('alert-box');
             // Check specific threat detection alerts OR direct noise threshold logic
-            if (data.alerts?.noise_alert || data.alerts?.theft_alert || noise > 25) {
+            if (data.alerts?.noise_alert || data.alerts?.theft_alert || noise > 40) {
                 alertBox.className = "mt-2 p-1 text-center text-xs rounded font-bold alert-active border border-red-500 bg-red-900/50 text-red-100";
                 
                 let threatType = "THREAT DETECTED";
                 if (data.alerts?.theft_alert) threatType = "THEFT (MOTION)";
-                else if (data.alerts?.noise_alert || noise > 25) threatType = "NOISE LEVEL HIGH";
+                else if (data.alerts?.noise_alert || noise > 40) threatType = "NOISE LEVEL HIGH";
                 
                 alertBox.innerText = `⚠️ SECURITY ALERT: ${threatType}`;
             } else {
