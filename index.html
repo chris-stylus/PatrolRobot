@@ -320,6 +320,8 @@
         window.addEventListener('mouseup', stopHandler);
         window.addEventListener('touchend', stopHandler);
         window.addEventListener('touchcancel', stopHandler);
+        // Added 'mouseleave' to ensure stop if mouse leaves window
+        document.body.addEventListener('mouseleave', stopHandler);
 
         const keyMap = { 'ArrowUp': 'fwd', 'w': 'fwd', 'ArrowDown': 'bwd', 's': 'bwd', 'ArrowLeft': 'left', 'a': 'left', 'ArrowRight': 'right', 'd': 'right' };
         window.addEventListener('keydown', (e) => {
