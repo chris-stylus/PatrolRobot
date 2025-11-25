@@ -336,7 +336,17 @@
             if(!data) return;
 
             document.getElementById('val-dist').innerText = (data.distance || 0);
-            document.getElementById('val-noise').innerText = (data.noise || 0);
+            
+            const noise = data.noise || 0;
+            const noiseElem = document.getElementById('val-noise');
+            noiseElem.innerText = noise;
+            
+            // Visual Threshold Check for Noise > 25
+            if(noise > 25) {
+                noiseElem.className = "text-2xl font-bold text-red-500 animate-pulse";
+            } else {
+                noiseElem.className = "text-2xl font-bold";
+            }
             
             const alertBox = document.getElementById('alert-box');
             // Check specific threat detection alerts
