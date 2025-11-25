@@ -16,130 +16,148 @@
      crossorigin=""/>
     
     <style>
-        body { font-family: 'Share Tech Mono', monospace; background-color: #0f172a; color: #00ff41; }
+        body { font-family: 'Share Tech Mono', monospace; background-color: #0f172a; color: #00ff41; user-select: none; }
         .glass-panel { background: rgba(30, 41, 59, 0.7); border: 1px solid #00ff41; backdrop-filter: blur(5px); }
-        .btn-control { transition: all 0.2s; border: 2px solid #00ff41; user-select: none; -webkit-user-select: none; } /* Added user-select none for better touch exp */
-        .btn-control:active { transform: scale(0.95); background-color: #00ff41; color: black; }
-        .btn-control.active-state { transform: scale(0.95); background-color: #00ff41; color: black; } /* Class for JS activation */
+        .btn-control { transition: all 0.1s; border: 2px solid #00ff41; cursor: pointer; }
+        .btn-control:active, .btn-control.active-key { transform: scale(0.92); background-color: #00ff41; color: black; box-shadow: 0 0 15px #00ff41; }
         .alert-active { animation: blink 1s infinite; background-color: rgba(220, 38, 38, 0.3); border-color: #ef4444; color: #ef4444; }
         @keyframes blink { 50% { opacity: 0.5; } }
+        /* Scrollbar for logs */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 4px; }
         /* Fix Leaflet z-index issues with Tailwind */
         .leaflet-pane { z-index: 0 !important; }
         .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
     </style>
 </head>
-<body class="min-h-screen p-4">
+<body class="min-h-screen p-4 flex flex-col">
 
     <!-- Header -->
-    <header class="mb-6 flex justify-between items-center border-b border-green-500 pb-2">
-        <h1 class="text-2xl md:text-3xl font-bold"><i class="fas fa-robot"></i> S3-PATROL UNIT</h1>
-        <!-- Updated Connection Status ID and default state -->
-        <div id="connectionStatus" class="text-xs md:text-sm bg-red-900 px-3 py-1 rounded">OFFLINE</div>
+    <header class="mb-4 flex justify-between items-center border-b border-green-500 pb-2 shrink-0">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold tracking-wider"><i class="fas fa-robot"></i> S3-PATROL</h1>
+            <div class="text-xs text-green-600">TACTICAL SURVEILLANCE UNIT</div>
+        </div>
+        <div id="connectionStatus" class="text-xs md:text-sm bg-red-900 px-3 py-1 rounded border border-red-500 animate-pulse">OFFLINE</div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
         
-        <!-- Live Video / Map Panel -->
-        <div class="glass-panel p-4 rounded-lg col-span-1 lg:col-span-2 h-80 relative">
-            <h2 class="absolute top-2 left-2 bg-black px-2 text-sm z-10 border border-green-500">LIVE GPS FEED</h2>
-            <div id="map" class="w-full h-full bg-slate-800 rounded opacity-80 text-gray-500">
-                <!-- Map Container -->
+        <!-- COLUMN 1: MAP & VIDEO -->
+        <div class="glass-panel p-2 rounded-lg col-span-1 lg:col-span-2 flex flex-col relative min-h-[300px]">
+            <div class="flex justify-between items-center mb-2 px-2">
+                <h2 class="bg-black px-2 text-sm border border-green-500">LIVE GPS FEED</h2>
+                <div class="text-xs text-gray-400"><i class="fas fa-satellite"></i> SATELLITES: 4</div>
             </div>
+            <div id="map" class="w-full flex-grow bg-slate-800 rounded opacity-90 border border-green-900/50"></div>
         </div>
 
-        <!-- Telemetry Panel -->
-        <div class="glass-panel p-4 rounded-lg space-y-4">
-            <h2 class="text-xl border-b border-gray-600 pb-1">TELEMETRY</h2>
+        <!-- COLUMN 2: CONTROLS & TELEMETRY -->
+        <div class="flex flex-col gap-4">
             
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-800 p-2 rounded">
-                    <div class="text-xs text-gray-400">DISTANCE</div>
-                    <div class="text-2xl" id="val-dist">-- cm</div>
+            <!-- Telemetry Strip -->
+            <div class="glass-panel p-3 rounded-lg">
+                <h2 class="text-lg border-b border-gray-600 pb-1 mb-2 text-center">SENSOR ARRAY</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-slate-900/80 p-2 rounded border border-green-900">
+                        <div class="text-[10px] text-gray-400">DISTANCE (CM)</div>
+                        <div class="text-2xl font-bold" id="val-dist">---</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded border border-green-900">
+                        <div class="text-[10px] text-gray-400">NOISE (RAW)</div>
+                        <div class="text-2xl font-bold" id="val-noise">---</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded border border-green-900">
+                        <div class="text-[10px] text-gray-400">SPEED (KM/H)</div>
+                        <div class="text-2xl font-bold" id="val-speed">0.0</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded border border-green-900">
+                        <div class="text-[10px] text-gray-400">SYS VOLTAGE</div>
+                        <div class="text-2xl font-bold text-yellow-400">12.4V</div>
+                    </div>
                 </div>
-                <div class="bg-slate-800 p-2 rounded">
-                    <div class="text-xs text-gray-400">NOISE LVL</div>
-                    <div class="text-2xl" id="val-noise">-- db</div>
-                </div>
-                <div class="bg-slate-800 p-2 rounded">
-                    <div class="text-xs text-gray-400">SPEED</div>
-                    <div class="text-2xl" id="val-speed">0 km/h</div>
-                </div>
-                <div class="bg-slate-800 p-2 rounded">
-                    <div class="text-xs text-gray-400">BATTERY</div>
-                    <div class="text-2xl text-yellow-400">84%</div>
+                <div id="alert-box" class="mt-2 p-1 text-center text-xs bg-slate-800 rounded text-gray-500">
+                    SCANNING FOR THREATS...
                 </div>
             </div>
 
-            <!-- Alerts -->
-            <div id="alert-box" class="mt-4 p-2 border border-gray-700 text-center text-sm">
-                NO ACTIVE THREATS
+            <!-- Command Module -->
+            <div class="glass-panel p-4 rounded-lg flex-grow flex flex-col justify-center">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-1">
+                    <h2 class="text-lg">COMMAND</h2>
+                    <div id="cmd-status" class="text-xs bg-black px-2 py-0.5 rounded text-green-400">READY</div>
+                </div>
+                
+                <!-- Mode Switch -->
+                <div class="flex mb-4 bg-slate-900 p-1 rounded border border-green-800">
+                    <button onclick="setMode('manual')" id="btn-manual" class="flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90">MANUAL</button>
+                    <button onclick="setMode('auto')" id="btn-auto" class="flex-1 py-1 text-sm rounded text-gray-400 hover:text-white">AUTONOMOUS</button>
+                </div>
+
+                <!-- Speed Slider (UI Only for now) -->
+                <div class="mb-4 px-2">
+                    <label class="text-[10px] text-gray-400 flex justify-between">
+                        <span>THROTTLE LIMIT</span>
+                        <span id="speed-val">100%</span>
+                    </label>
+                    <input type="range" min="0" max="100" value="100" class="w-full accent-green-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('speed-val').innerText = this.value + '%'">
+                </div>
+
+                <!-- D-PAD -->
+                <div id="dpad" class="grid grid-cols-3 gap-2 max-w-[180px] mx-auto mb-4">
+                    <div></div>
+                    <button id="btn-fwd" 
+                        onmousedown="handleInput('fwd', this)" ontouchstart="handleInput('fwd', this, event)"
+                        class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <div></div>
+                    
+                    <button id="btn-left" 
+                        onmousedown="handleInput('left', this)" ontouchstart="handleInput('left', this, event)"
+                        class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button 
+                        onmousedown="handleInput('stop', this)" ontouchstart="handleInput('stop', this, event)"
+                        class="btn-control h-14 rounded bg-red-900/50 border-red-500 flex items-center justify-center text-xl shadow-lg text-red-400">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <button id="btn-right" 
+                        onmousedown="handleInput('right', this)" ontouchstart="handleInput('right', this, event)"
+                        class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    
+                    <div></div>
+                    <button id="btn-bwd" 
+                        onmousedown="handleInput('bwd', this)" ontouchstart="handleInput('bwd', this, event)"
+                        class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div></div>
+                </div>
+
+                <!-- Extra Actions -->
+                <div class="grid grid-cols-2 gap-2 mt-auto">
+                    <button onclick="sendCommand('horn')" class="btn-control py-2 rounded bg-yellow-900/20 border-yellow-500 text-yellow-500 text-xs font-bold hover:bg-yellow-500 hover:text-black">
+                        <i class="fas fa-bullhorn"></i> SIREN
+                    </button>
+                    <button onclick="toggleLight()" id="btn-light" class="btn-control py-2 rounded bg-blue-900/20 border-blue-500 text-blue-500 text-xs font-bold hover:bg-blue-500 hover:text-black">
+                        <i class="fas fa-lightbulb"></i> LIGHTS
+                    </button>
+                </div>
             </div>
-            
-            <!-- Debug Info -->
-             <div class="text-xs text-gray-500 mt-2" id="debug-log">Waiting for data...</div>
         </div>
+    </div>
 
-        <!-- Control Panel -->
-        <div class="glass-panel p-4 rounded-lg col-span-1 md:col-span-2 lg:col-span-1">
-            <h2 class="text-xl border-b border-gray-600 pb-1 mb-4">COMMAND MODULE</h2>
-            
-            <!-- Command Status Indicator -->
-            <div id="cmd-status" class="text-center text-sm text-green-400 mb-4 bg-slate-900 py-1 rounded border border-green-900">
-                STATUS: READY
-            </div>
-
-            <!-- Mode Selector -->
-            <div class="flex justify-center mb-6 bg-slate-800 p-1 rounded">
-                <button onclick="setMode('manual')" id="btn-manual" class="flex-1 py-2 rounded bg-green-600 text-black font-bold">MANUAL</button>
-                <button onclick="setMode('auto')" id="btn-auto" class="flex-1 py-2 rounded text-gray-400">AUTO-PILOT</button>
-            </div>
-
-            <!-- D-Pad -->
-            <div id="dpad" class="grid grid-cols-3 gap-2 max-w-[200px] mx-auto select-none">
-                <div></div>
-                <!-- Forward -->
-                <button id="btn-fwd" 
-                    onmousedown="handleInput('fwd', this)" 
-                    ontouchstart="handleInput('fwd', this, event)"
-                    class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center">
-                    <i class="fas fa-chevron-up"></i>
-                </button>
-                <div></div>
-                
-                <!-- Left -->
-                <button id="btn-left" 
-                    onmousedown="handleInput('left', this)" 
-                    ontouchstart="handleInput('left', this, event)"
-                    class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                
-                <!-- Stop (Manual) -->
-                <button 
-                    onmousedown="handleInput('stop', this)" 
-                    ontouchstart="handleInput('stop', this, event)"
-                    class="btn-control h-16 rounded bg-red-900 border-red-500 flex items-center justify-center">
-                    <i class="fas fa-stop"></i>
-                </button>
-                
-                <!-- Right -->
-                <button id="btn-right" 
-                    onmousedown="handleInput('right', this)" 
-                    ontouchstart="handleInput('right', this, event)"
-                    class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-                
-                <div></div>
-                <!-- Backward -->
-                <button id="btn-bwd" 
-                    onmousedown="handleInput('bwd', this)" 
-                    ontouchstart="handleInput('bwd', this, event)"
-                    class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-                <div></div>
-            </div>
+    <!-- System Log Footer -->
+    <div class="mt-4 glass-panel p-2 rounded border-t border-green-500 h-32 overflow-hidden flex flex-col">
+        <div class="text-[10px] text-gray-500 uppercase tracking-widest border-b border-gray-800 mb-1">System Log / Terminal</div>
+        <div id="sys-log" class="font-mono text-xs text-green-400/80 overflow-y-auto flex-grow space-y-1 p-1">
+            <div>> SYSTEM INITIALIZED...</div>
+            <div>> WAITING FOR UPLINK...</div>
         </div>
     </div>
 
@@ -165,75 +183,79 @@
             measurementId: "G-WR5CJKWND5"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- CONNECTION STATUS MONITOR ---
-        const connectedRef = ref(db, ".info/connected");
-        onValue(connectedRef, (snap) => {
-            const statusDiv = document.getElementById("connectionStatus");
+        // --- UTILS: LOGGING ---
+        window.logMsg = function(msg) {
+            const logDiv = document.getElementById('sys-log');
+            const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+            const entry = document.createElement('div');
+            entry.innerText = `> [${time}] ${msg}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // --- STATUS MONITOR ---
+        onValue(ref(db, ".info/connected"), (snap) => {
+            const el = document.getElementById("connectionStatus");
             if (snap.val() === true) {
-                statusDiv.innerText = "SYSTEM ONLINE";
-                statusDiv.className = "text-xs md:text-sm bg-green-900 px-3 py-1 rounded";
+                el.innerText = "ONLINE";
+                el.className = "text-xs md:text-sm bg-green-900 px-3 py-1 rounded border border-green-500 shadow-[0_0_10px_#00ff41]";
+                logMsg("UPLINK ESTABLISHED");
             } else {
-                statusDiv.innerText = "OFFLINE";
-                statusDiv.className = "text-xs md:text-sm bg-red-900 px-3 py-1 rounded";
+                el.innerText = "OFFLINE";
+                el.className = "text-xs md:text-sm bg-red-900 px-3 py-1 rounded border border-red-500 animate-pulse";
+                logMsg("CONNECTION LOST");
             }
         });
 
-        // --- MAP SETUP (Leaflet) ---
+        // --- MAP SETUP ---
         let map, marker;
-        
         function initMap() {
-            // Default center (New Delhi)
             const defaultLoc = [28.721, 77.102];
-            
-            // Create map
-            map = L.map('map').setView(defaultLoc, 15);
-            
-            // Add OpenStreetMap tiles
+            map = L.map('map', {zoomControl: false}).setView(defaultLoc, 15);
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                attribution: ''
             }).addTo(map);
-
-            // Add robot marker (using a custom divIcon or standard icon)
-            // For simplicity, using standard icon with a popup
-            marker = L.marker(defaultLoc).addTo(map);
-            marker.bindPopup("<b>Patrol Robot</b><br>Online").openPopup();
+            
+            // Custom Icon
+            const robotIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#00ff41; width:10px; height:10px; border-radius:50%; box-shadow:0 0 10px #00ff41;'></div>",
+                iconSize: [10, 10],
+                iconAnchor: [5, 5]
+            });
+            
+            marker = L.marker(defaultLoc, {icon: robotIcon}).addTo(map);
+            logMsg("MAP SYSTEMS INITIALIZED");
         }
-
-        // Initialize Map immediately
         initMap();
 
-        // --- GLOBAL CONTROL VARIABLES ---
+        // --- CONTROL LOGIC ---
         let currentCommand = 'stop';
-        let activeBtn = null;
-
-        // --- CONTROL FUNCTIONS ---
         
-        // Expose functions to window for HTML access
         window.setMode = function(mode) {
             update(ref(db, 'robot/control'), { mode: mode })
                 .then(() => {
-                   document.getElementById('cmd-status').innerText = "MODE SET: " + mode.toUpperCase();
-                })
-                .catch(error => console.error("Firebase Error:", error));
+                   document.getElementById('cmd-status').innerText = "MODE: " + mode.toUpperCase();
+                   logMsg(`MODE SWITCHED TO ${mode.toUpperCase()}`);
+                });
             
-            // UI Updates
+            // UI Toggle
             const manualBtn = document.getElementById('btn-manual');
             const autoBtn = document.getElementById('btn-auto');
             const dpad = document.getElementById('dpad');
 
             if(mode === 'auto') {
-                manualBtn.className = "flex-1 py-2 rounded text-gray-400";
-                autoBtn.className = "flex-1 py-2 rounded bg-green-600 text-black font-bold";
+                manualBtn.className = "flex-1 py-1 text-sm rounded text-gray-400 hover:text-white";
+                autoBtn.className = "flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90";
                 dpad.style.opacity = "0.3";
                 dpad.style.pointerEvents = "none";
             } else {
-                manualBtn.className = "flex-1 py-2 rounded bg-green-600 text-black font-bold";
-                autoBtn.className = "flex-1 py-2 rounded text-gray-400";
+                manualBtn.className = "flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90";
+                autoBtn.className = "flex-1 py-1 text-sm rounded text-gray-400 hover:text-white";
                 dpad.style.opacity = "1";
                 dpad.style.pointerEvents = "auto";
             }
@@ -241,91 +263,97 @@
 
         window.handleInput = function(cmd, btnElement, event) {
             if(event) {
-                event.preventDefault(); // Prevent ghost mouse clicks on touch
+                event.preventDefault(); 
+                event.stopPropagation();
             }
-            
-            // If we are already sending this command, ignore (prevents spamming)
             if(currentCommand === cmd) return;
-
-            // Send Command
             sendCommand(cmd);
             currentCommand = cmd;
-            activeBtn = btnElement;
-
-            // Add visual active state
-            if(btnElement) btnElement.classList.add('active-state');
         }
 
         window.sendCommand = function(cmd) {
-            document.getElementById('cmd-status').innerText = "SENDING: " + cmd.toUpperCase() + "...";
+            document.getElementById('cmd-status').innerText = "SENDING: " + cmd.toUpperCase();
             update(ref(db, 'robot/control'), { command: cmd })
                 .then(() => {
                      document.getElementById('cmd-status').innerText = "SENT: " + cmd.toUpperCase();
+                     if(cmd !== 'stop') logMsg(`CMD TX: ${cmd.toUpperCase()}`);
                 })
-                .catch(error => {
-                    console.error("Firebase Error:", error);
-                    document.getElementById('cmd-status').innerText = "ERROR SENDING";
-                });
+                .catch(err => logMsg(`ERROR: ${err.message}`));
         }
 
-        // --- GLOBAL RELEASE LISTENERS ---
-        // This ensures the robot stops even if you drag your mouse/finger off the button
+        window.toggleLight = function() {
+            logMsg("TOGGLING LIGHTS...");
+            // Toggle logic here if you add it to firmware
+        }
+
+        // --- GLOBAL STOP HANDLER (Mouse/Touch Release) ---
         const stopHandler = () => {
             if(currentCommand !== 'stop') {
                 sendCommand('stop');
                 currentCommand = 'stop';
-                
-                // Remove visual active state from all buttons
-                document.querySelectorAll('.btn-control').forEach(btn => {
-                    btn.classList.remove('active-state');
-                });
+                // Reset Key UI
+                document.querySelectorAll('.btn-control').forEach(b => b.classList.remove('active-key'));
             }
         };
-
         window.addEventListener('mouseup', stopHandler);
         window.addEventListener('touchend', stopHandler);
 
+        // --- KEYBOARD CONTROLS (WASD / Arrows) ---
+        const keyMap = {
+            'ArrowUp': 'fwd', 'w': 'fwd',
+            'ArrowDown': 'bwd', 's': 'bwd',
+            'ArrowLeft': 'left', 'a': 'left',
+            'ArrowRight': 'right', 'd': 'right'
+        };
 
-        // --- LIVE DATA LISTENERS ---
-        const statusRef = ref(db, 'robot/status');
-        
-        onValue(statusRef, (snapshot) => {
-            const data = snapshot.val();
-            document.getElementById('debug-log').innerText = "Data Rx: " + new Date().toLocaleTimeString();
-            
-            if(!data) return;
-
-            // Update Telemetry
-            document.getElementById('val-dist').innerText = (data.distance || 0) + " cm";
-            document.getElementById('val-noise').innerText = (data.noise || 0);
-            document.getElementById('val-speed').innerText = (data.gps?.speed || 0) + " km/h";
-
-            // Update Alerts
-            const alertBox = document.getElementById('alert-box');
-            if (data.alerts?.noise_alert || data.alerts?.theft_alert) {
-                alertBox.className = "mt-4 p-2 border border-red-500 text-center text-sm alert-active";
-                alertBox.innerText = "🚨 SECURITY ALERT: " + 
-                    (data.alerts.noise_alert ? "NOISE " : "") + 
-                    (data.alerts.theft_alert ? "THEFT " : "") + "DETECTED";
-            } else {
-                alertBox.className = "mt-4 p-2 border border-gray-700 text-center text-sm";
-                alertBox.innerText = "NO ACTIVE THREATS";
-            }
-
-            // Update Map Marker (Leaflet)
-            if (map && marker && data.gps) {
-                const newLat = data.gps.lat;
-                const newLng = data.gps.lng;
-                const newLatLng = new L.LatLng(newLat, newLng);
-                
-                marker.setLatLng(newLatLng);
-                map.panTo(newLatLng);
-                
-                // Update Popup content if needed
-                marker.setPopupContent(`<b>Patrol Robot</b><br>Speed: ${data.gps.speed} km/h`);
+        window.addEventListener('keydown', (e) => {
+            if (keyMap[e.key]) {
+                const cmd = keyMap[e.key];
+                if(currentCommand !== cmd) {
+                    // Highlight UI Button
+                    const btnId = `btn-${cmd}`;
+                    const btn = document.getElementById(btnId);
+                    if(btn) btn.classList.add('active-key');
+                    
+                    sendCommand(cmd);
+                    currentCommand = cmd;
+                }
             }
         });
 
+        window.addEventListener('keyup', (e) => {
+            if (keyMap[e.key]) {
+                stopHandler();
+            }
+        });
+
+        // --- TELEMETRY LISTENER ---
+        onValue(ref(db, 'robot/status'), (snapshot) => {
+            const data = snapshot.val();
+            if(!data) return;
+
+            document.getElementById('val-dist').innerText = (data.distance || 0);
+            document.getElementById('val-noise').innerText = (data.noise || 0);
+            document.getElementById('val-speed').innerText = (data.gps?.speed || 0).toFixed(1);
+
+            // Alerts
+            const alertBox = document.getElementById('alert-box');
+            if (data.alerts?.noise_alert || data.alerts?.theft_alert) {
+                alertBox.className = "mt-2 p-1 text-center text-xs rounded font-bold alert-active";
+                alertBox.innerText = `⚠️ THREAT DETECTED: ${data.alerts.noise_alert ? 'NOISE' : 'THEFT'}`;
+                logMsg("!!! ALERT TRIGGERED !!!");
+            } else {
+                alertBox.className = "mt-2 p-1 text-center text-xs bg-slate-800 rounded text-gray-500";
+                alertBox.innerText = "SECTOR SECURE";
+            }
+
+            // Map Update
+            if (map && marker && data.gps) {
+                const newLoc = [data.gps.lat, data.gps.lng];
+                marker.setLatLng(newLoc);
+                map.panTo(newLoc);
+            }
+        });
     </script>
 </body>
 </html>
