@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patrol Robot Command Center</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS (OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    
+    <style>
+        body { font-family: 'Share Tech Mono', monospace; background-color: #0f172a; color: #00ff41; }
+        .glass-panel { background: rgba(30, 41, 59, a0.7); border: 1px solid #00ff41; backdrop-filter: blur(5px); }
+        .btn-control { transition: all 0.2s; border: 2px solid #00ff41; }
+        .btn-control:active { transform: scale(0.95); background-color: #00ff41; color: black; }
+        .alert-active { animation: blink 1s infinite; background-color: rgba(220, 38, 38, 0.3); border-color: #ef4444; color: #ef4444; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        /* Fix Leaflet z-index issues with Tailwind */
+        .leaflet-pane { z-index: 0 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+
+    <!-- Header -->
+    <header class="mb-6 flex justify-between items-center border-b border-green-500 pb-2">
+        <h1 class="text-2xl md:text-3xl font-bold"><i class="fas fa-robot"></i> S3-PATROL UNIT</h1>
+        <div id="connectionStatus" class="text-xs md:text-sm bg-green-900 px-3 py-1 rounded">SYSTEM ONLINE</div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Live Video / Map Panel -->
+        <div class="glass-panel p-4 rounded-lg col-span-1 lg:col-span-2 h-80 relative">
+            <h2 class="absolute top-2 left-2 bg-black px-2 text-sm z-10 border border-green-500">LIVE GPS FEED</h2>
+            <div id="map" class="w-full h-full bg-slate-800 rounded opacity-80 text-gray-500">
+                <!-- Map Container -->
+            </div>
+        </div>
+
+        <!-- Telemetry Panel -->
+        <div class="glass-panel p-4 rounded-lg space-y-4">
+            <h2 class="text-xl border-b border-gray-600 pb-1">TELEMETRY</h2>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-800 p-2 rounded">
+                    <div class="text-xs text-gray-400">DISTANCE</div>
+                    <div class="text-2xl" id="val-dist">-- cm</div>
+                </div>
+                <div class="bg-slate-800 p-2 rounded">
+                    <div class="text-xs text-gray-400">NOISE LVL</div>
+                    <div class="text-2xl" id="val-noise">-- db</div>
+                </div>
+                <div class="bg-slate-800 p-2 rounded">
+                    <div class="text-xs text-gray-400">SPEED</div>
+                    <div class="text-2xl" id="val-speed">0 km/h</div>
+                </div>
+                <div class="bg-slate-800 p-2 rounded">
+                    <div class="text-xs text-gray-400">BATTERY</div>
+                    <div class="text-2xl text-yellow-400">84%</div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div id="alert-box" class="mt-4 p-2 border border-gray-700 text-center text-sm">
+                NO ACTIVE THREATS
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="glass-panel p-4 rounded-lg col-span-1 md:col-span-2 lg:col-span-1">
+            <h2 class="text-xl border-b border-gray-600 pb-1 mb-4">COMMAND MODULE</h2>
+            
+            <!-- Mode Selector -->
+            <div class="flex justify-center mb-6 bg-slate-800 p-1 rounded">
+                <button onclick="setMode('manual')" id="btn-manual" class="flex-1 py-2 rounded bg-green-600 text-black font-bold">MANUAL</button>
+                <button onclick="setMode('auto')" id="btn-auto" class="flex-1 py-2 rounded text-gray-400">AUTO-PILOT</button>
+            </div>
+
+            <!-- D-Pad -->
+            <div id="dpad" class="grid grid-cols-3 gap-2 max-w-[200px] mx-auto">
+                <div></div>
+                <button onmousedown="sendCommand('fwd')" onmouseup="sendCommand('stop')" ontouchstart="sendCommand('fwd')" ontouchend="sendCommand('stop')" class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center"><i class="fas fa-chevron-up"></i></button>
+                <div></div>
+                
+                <button onmousedown="sendCommand('left')" onmouseup="sendCommand('stop')" ontouchstart="sendCommand('left')" ontouchend="sendCommand('stop')" class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center"><i class="fas fa-chevron-left"></i></button>
+                <button onmousedown="sendCommand('stop')" class="btn-control h-16 rounded bg-red-900 border-red-500 flex items-center justify-center"><i class="fas fa-stop"></i></button>
+                <button onmousedown="sendCommand('right')" onmouseup="sendCommand('stop')" ontouchstart="sendCommand('right')" ontouchend="sendCommand('stop')" class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center"><i class="fas fa-chevron-right"></i></button>
+                
+                <div></div>
+                <button onmousedown="sendCommand('bwd')" onmouseup="sendCommand('stop')" ontouchstart="sendCommand('bwd')" ontouchend="sendCommand('stop')" class="btn-control h-16 rounded bg-slate-800 flex items-center justify-center"><i class="fas fa-chevron-down"></i></button>
+                <div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        // --- REPLACE WITH YOUR CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgJNgD6T19VSYp25yB17PwKxOmx2UP0cg",
+            authDomain: "patrol-robot-238d5.firebaseapp.com",
+            databaseURL: "https://patrol-robot-238d5-default-rtdb.firebaseio.com",
+            projectId: "patrol-robot-238d5",
+            storageBucket: "patrol-robot-238d5.firebasestorage.app",
+            messagingSenderId: "632769521130",
+            appId: "1:632769521130:web:c0ac6ad12704d5ea087e93",
+            measurementId: "G-WR5CJKWND5"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- MAP SETUP (Leaflet) ---
+        let map, marker;
+        
+        function initMap() {
+            // Default center (New Delhi)
+            const defaultLoc = [28.721, 77.102];
+            
+            // Create map
+            map = L.map('map').setView(defaultLoc, 15);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+
+            // Add robot marker (using a custom divIcon or standard icon)
+            // For simplicity, using standard icon with a popup
+            marker = L.marker(defaultLoc).addTo(map);
+            marker.bindPopup("<b>Patrol Robot</b><br>Online").openPopup();
+        }
+
+        // Initialize Map immediately
+        initMap();
+
+        // --- CONTROL FUNCTIONS ---
+        window.setMode = function(mode) {
+            update(ref(db, 'robot/control'), { mode: mode });
+            
+            // UI Updates
+            const manualBtn = document.getElementById('btn-manual');
+            const autoBtn = document.getElementById('btn-auto');
+            const dpad = document.getElementById('dpad');
+
+            if(mode === 'auto') {
+                manualBtn.className = "flex-1 py-2 rounded text-gray-400";
+                autoBtn.className = "flex-1 py-2 rounded bg-green-600 text-black font-bold";
+                dpad.style.opacity = "0.3";
+                dpad.style.pointerEvents = "none";
+            } else {
+                manualBtn.className = "flex-1 py-2 rounded bg-green-600 text-black font-bold";
+                autoBtn.className = "flex-1 py-2 rounded text-gray-400";
+                dpad.style.opacity = "1";
+                dpad.style.pointerEvents = "auto";
+            }
+        }
+
+        window.sendCommand = function(cmd) {
+            update(ref(db, 'robot/control'), { command: cmd });
+        }
+
+        // --- LIVE DATA LISTENERS ---
+        const statusRef = ref(db, 'robot/status');
+        
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+            if(!data) return;
+
+            // Update Telemetry
+            document.getElementById('val-dist').innerText = (data.distance || 0) + " cm";
+            document.getElementById('val-noise').innerText = (data.noise || 0);
+            document.getElementById('val-speed').innerText = (data.gps?.speed || 0) + " km/h";
+
+            // Update Alerts
+            const alertBox = document.getElementById('alert-box');
+            if (data.alerts?.noise_alert || data.alerts?.theft_alert) {
+                alertBox.className = "mt-4 p-2 border border-red-500 text-center text-sm alert-active";
+                alertBox.innerText = "🚨 SECURITY ALERT: " + 
+                    (data.alerts.noise_alert ? "NOISE " : "") + 
+                    (data.alerts.theft_alert ? "THEFT " : "") + "DETECTED";
+            } else {
+                alertBox.className = "mt-4 p-2 border border-gray-700 text-center text-sm";
+                alertBox.innerText = "NO ACTIVE THREATS";
+            }
+
+            // Update Map Marker (Leaflet)
+            if (map && marker && data.gps) {
+                const newLat = data.gps.lat;
+                const newLng = data.gps.lng;
+                const newLatLng = new L.LatLng(newLat, newLng);
+                
+                marker.setLatLng(newLatLng);
+                map.panTo(newLatLng);
+                
+                // Update Popup content if needed
+                marker.setPopupContent(`<b>Patrol Robot</b><br>Speed: ${data.gps.speed} km/h`);
+            }
+        });
+
+    </script>
+</body>
+</html>
