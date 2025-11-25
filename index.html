@@ -17,7 +17,7 @@
     
     <style>
         body { font-family: 'Share Tech Mono', monospace; background-color: #0f172a; color: #00ff41; }
-        .glass-panel { background: rgba(30, 41, 59, a0.7); border: 1px solid #00ff41; backdrop-filter: blur(5px); }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); border: 1px solid #00ff41; backdrop-filter: blur(5px); }
         .btn-control { transition: all 0.2s; border: 2px solid #00ff41; }
         .btn-control:active { transform: scale(0.95); background-color: #00ff41; color: black; }
         .alert-active { animation: blink 1s infinite; background-color: rgba(220, 38, 38, 0.3); border-color: #ef4444; color: #ef4444; }
@@ -32,7 +32,8 @@
     <!-- Header -->
     <header class="mb-6 flex justify-between items-center border-b border-green-500 pb-2">
         <h1 class="text-2xl md:text-3xl font-bold"><i class="fas fa-robot"></i> S3-PATROL UNIT</h1>
-        <div id="connectionStatus" class="text-xs md:text-sm bg-green-900 px-3 py-1 rounded">SYSTEM ONLINE</div>
+        <!-- Updated Connection Status ID and default state -->
+        <div id="connectionStatus" class="text-xs md:text-sm bg-red-900 px-3 py-1 rounded">OFFLINE</div>
     </header>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -72,6 +73,9 @@
             <div id="alert-box" class="mt-4 p-2 border border-gray-700 text-center text-sm">
                 NO ACTIVE THREATS
             </div>
+            
+            <!-- Debug Info -->
+             <div class="text-xs text-gray-500 mt-2" id="debug-log">Waiting for data...</div>
         </div>
 
         <!-- Control Panel -->
@@ -127,6 +131,19 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // --- CONNECTION STATUS MONITOR ---
+        const connectedRef = ref(db, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            const statusDiv = document.getElementById("connectionStatus");
+            if (snap.val() === true) {
+                statusDiv.innerText = "SYSTEM ONLINE";
+                statusDiv.className = "text-xs md:text-sm bg-green-900 px-3 py-1 rounded";
+            } else {
+                statusDiv.innerText = "OFFLINE";
+                statusDiv.className = "text-xs md:text-sm bg-red-900 px-3 py-1 rounded";
+            }
+        });
+
         // --- MAP SETUP (Leaflet) ---
         let map, marker;
         
@@ -154,7 +171,8 @@
 
         // --- CONTROL FUNCTIONS ---
         window.setMode = function(mode) {
-            update(ref(db, 'robot/control'), { mode: mode });
+            update(ref(db, 'robot/control'), { mode: mode })
+                .catch(error => console.error("Firebase Error:", error));
             
             // UI Updates
             const manualBtn = document.getElementById('btn-manual');
@@ -175,7 +193,8 @@
         }
 
         window.sendCommand = function(cmd) {
-            update(ref(db, 'robot/control'), { command: cmd });
+            update(ref(db, 'robot/control'), { command: cmd })
+                .catch(error => console.error("Firebase Error:", error));
         }
 
         // --- LIVE DATA LISTENERS ---
@@ -183,6 +202,8 @@
         
         onValue(statusRef, (snapshot) => {
             const data = snapshot.val();
+            document.getElementById('debug-log').innerText = "Data Rx: " + new Date().toLocaleTimeString();
+            
             if(!data) return;
 
             // Update Telemetry
