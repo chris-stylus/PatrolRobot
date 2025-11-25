@@ -16,9 +16,16 @@
      crossorigin=""/>
     
     <style>
-        body { font-family: 'Share Tech Mono', monospace; background-color: #0f172a; color: #00ff41; user-select: none; }
+        body { font-family: 'Share Tech Mono', monospace; background-color: #0f172a; color: #00ff41; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
         .glass-panel { background: rgba(30, 41, 59, 0.7); border: 1px solid #00ff41; backdrop-filter: blur(5px); }
-        .btn-control { transition: all 0.1s; border: 2px solid #00ff41; cursor: pointer; }
+        /* Improved Button Styles for Touch */
+        .btn-control { 
+            transition: all 0.1s; 
+            border: 2px solid #00ff41; 
+            cursor: pointer; 
+            touch-action: none; /* CRITICAL: Prevents scroll/zoom on button hold */
+            -webkit-tap-highlight-color: transparent;
+        }
         .btn-control:active, .btn-control.active-key { transform: scale(0.92); background-color: #00ff41; color: black; box-shadow: 0 0 15px #00ff41; }
         .alert-active { animation: blink 1s infinite; background-color: rgba(220, 38, 38, 0.3); border-color: #ef4444; color: #ef4444; }
         @keyframes blink { 50% { opacity: 0.5; } }
@@ -91,8 +98,8 @@
                 
                 <!-- Mode Switch -->
                 <div class="flex mb-4 bg-slate-900 p-1 rounded border border-green-800">
-                    <button onclick="setMode('manual')" id="btn-manual" class="flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90">MANUAL</button>
-                    <button onclick="setMode('auto')" id="btn-auto" class="flex-1 py-1 text-sm rounded text-gray-400 hover:text-white">AUTONOMOUS</button>
+                    <button onclick="setMode('manual')" id="btn-manual" class="flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90 transition-colors">MANUAL</button>
+                    <button onclick="setMode('auto')" id="btn-auto" class="flex-1 py-1 text-sm rounded text-gray-400 hover:text-white transition-colors">AUTONOMOUS</button>
                 </div>
 
                 <!-- Speed Slider (UI Only for now) -->
@@ -105,39 +112,40 @@
                 </div>
 
                 <!-- D-PAD -->
-                <div id="dpad" class="grid grid-cols-3 gap-2 max-w-[180px] mx-auto mb-4">
+                <div id="dpad" class="grid grid-cols-3 gap-2 max-w-[180px] mx-auto mb-2">
                     <div></div>
                     <button id="btn-fwd" 
-                        onmousedown="handleInput('fwd', this)" ontouchstart="handleInput('fwd', this, event)"
+                        onmousedown="handleInput('fwd', this)" ontouchstart="handleInput('fwd', this, event)" oncontextmenu="return false;"
                         class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
                         <i class="fas fa-chevron-up"></i>
                     </button>
                     <div></div>
                     
                     <button id="btn-left" 
-                        onmousedown="handleInput('left', this)" ontouchstart="handleInput('left', this, event)"
+                        onmousedown="handleInput('left', this)" ontouchstart="handleInput('left', this, event)" oncontextmenu="return false;"
                         class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     <button 
-                        onmousedown="handleInput('stop', this)" ontouchstart="handleInput('stop', this, event)"
+                        onmousedown="handleInput('stop', this)" ontouchstart="handleInput('stop', this, event)" oncontextmenu="return false;"
                         class="btn-control h-14 rounded bg-red-900/50 border-red-500 flex items-center justify-center text-xl shadow-lg text-red-400">
                         <i class="fas fa-stop"></i>
                     </button>
                     <button id="btn-right" 
-                        onmousedown="handleInput('right', this)" ontouchstart="handleInput('right', this, event)"
+                        onmousedown="handleInput('right', this)" ontouchstart="handleInput('right', this, event)" oncontextmenu="return false;"
                         class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                     
                     <div></div>
                     <button id="btn-bwd" 
-                        onmousedown="handleInput('bwd', this)" ontouchstart="handleInput('bwd', this, event)"
+                        onmousedown="handleInput('bwd', this)" ontouchstart="handleInput('bwd', this, event)" oncontextmenu="return false;"
                         class="btn-control h-14 rounded bg-slate-800 flex items-center justify-center text-xl shadow-lg">
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div></div>
                 </div>
+                <div class="text-center text-[10px] text-gray-500 mb-2">HOLD ARROWS TO MOVE</div>
 
                 <!-- Extra Actions -->
                 <div class="grid grid-cols-2 gap-2 mt-auto">
@@ -237,7 +245,8 @@
         let currentCommand = 'stop';
         
         window.setMode = function(mode) {
-            update(ref(db, 'robot/control'), { mode: mode })
+            // Also send STOP when switching modes to prevent runaway robot
+            update(ref(db, 'robot/control'), { mode: mode, command: 'stop' })
                 .then(() => {
                    document.getElementById('cmd-status').innerText = "MODE: " + mode.toUpperCase();
                    logMsg(`MODE SWITCHED TO ${mode.toUpperCase()}`);
@@ -249,13 +258,13 @@
             const dpad = document.getElementById('dpad');
 
             if(mode === 'auto') {
-                manualBtn.className = "flex-1 py-1 text-sm rounded text-gray-400 hover:text-white";
-                autoBtn.className = "flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90";
+                manualBtn.className = "flex-1 py-1 text-sm rounded text-gray-400 hover:text-white transition-colors";
+                autoBtn.className = "flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90 transition-colors";
                 dpad.style.opacity = "0.3";
                 dpad.style.pointerEvents = "none";
             } else {
-                manualBtn.className = "flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90";
-                autoBtn.className = "flex-1 py-1 text-sm rounded text-gray-400 hover:text-white";
+                manualBtn.className = "flex-1 py-1 text-sm rounded bg-green-600 text-black font-bold hover:opacity-90 transition-colors";
+                autoBtn.className = "flex-1 py-1 text-sm rounded text-gray-400 hover:text-white transition-colors";
                 dpad.style.opacity = "1";
                 dpad.style.pointerEvents = "auto";
             }
@@ -283,7 +292,6 @@
 
         window.toggleLight = function() {
             logMsg("TOGGLING LIGHTS...");
-            // Toggle logic here if you add it to firmware
         }
 
         // --- GLOBAL STOP HANDLER (Mouse/Touch Release) ---
@@ -297,6 +305,7 @@
         };
         window.addEventListener('mouseup', stopHandler);
         window.addEventListener('touchend', stopHandler);
+        window.addEventListener('touchcancel', stopHandler); // Added for safety
 
         // --- KEYBOARD CONTROLS (WASD / Arrows) ---
         const keyMap = {
